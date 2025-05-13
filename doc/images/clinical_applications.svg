@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @keyframes ripple {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(2); opacity: 0; }
+      }
+      @keyframes pulse {
+        0% { opacity: 0.3; }
+        50% { opacity: 1; }
+        100% { opacity: 0.3; }
+      }
+      @keyframes dash {
+        0% { stroke-dashoffset: 300; }
+        100% { stroke-dashoffset: 0; }
+      }
+      @keyframes fadeIn {
+        0% { opacity: 0; }
+        100% { opacity: 1; }
+      }
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      .ripple { animation: ripple 3s infinite ease-out; }
+      .pulse { animation: pulse 2s infinite; }
+      .dash { animation: dash 10s linear infinite; }
+      .fadeIn { animation: fadeIn 1s ease-in; }
+      .bounce { animation: bounce 3s ease-in-out infinite; }
+      text { font-family: Arial, sans-serif; }
+    </style>
+    
+    <!-- Gradients -->
+    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c2e9fb" />
+      <stop offset="100%" stop-color="#a1c4fd" />
+    </linearGradient>
+    
+    <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d4fc79" />
+      <stop offset="100%" stop-color="#96e6a1" />
+    </linearGradient>
+    
+    <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9a9e" />
+      <stop offset="100%" stop-color="#fad0c4" />
+    </linearGradient>
+    
+    <linearGradient id="purpleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a18cd1" />
+      <stop offset="100%" stop-color="#fbc2eb" />
+    </linearGradient>
+    
+    <!-- Filters -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.3 0" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect x="0" y="0" width="800" height="600" fill="#f8f9fa" />
+  
+  <!-- Title -->
+  <text x="400" y="40" font-size="24" font-weight="bold" text-anchor="middle" fill="#333">Clinical Applications of Adaptive Neural Stimulation</text>
+  
+  <!-- Four Application Quadrants -->
+  <g transform="translate(400, 300)">
+    <!-- Central Hub -->
+    <circle cx="0" cy="0" r="60" fill="#f5f5f5" stroke="#333" stroke-width="2" filter="url(#shadow)" />
+    <text x="0" y="-10" font-size="14" font-weight="bold" text-anchor="middle" fill="#333">Adaptive</text>
+    <text x="0" y="10" font-size="14" font-weight="bold" text-anchor="middle" fill="#333">Neural</text>
+    <text x="0" y="30" font-size="14" font-weight="bold" text-anchor="middle" fill="#333">Stimulation</text>
+    
+    <!-- Circles around the hub with ripple effect -->
+    <circle class="ripple" cx="0" cy="0" r="60" fill="none" stroke="#3498db" stroke-width="1" />
+    <circle class="ripple" cx="0" cy="0" r="60" fill="none" stroke="#3498db" stroke-width="1" style="animation-delay: 1s" />
+    <circle class="ripple" cx="0" cy="0" r="60" fill="none" stroke="#3498db" stroke-width="1" style="animation-delay: 2s" />
+    
+    <!-- Connecting Lines -->
+    <line x1="-40" y1="-40" x2="-120" y2="-120" stroke="#333" stroke-width="1.5" stroke-dasharray="4 2" />
+    <line x1="40" y1="-40" x2="120" y2="-120" stroke="#333" stroke-width="1.5" stroke-dasharray="4 2" />
+    <line x1="-40" y1="40" x2="-120" y2="120" stroke="#333" stroke-width="1.5" stroke-dasharray="4 2" />
+    <line x1="40" y1="40" x2="120" y2="120" stroke="#333" stroke-width="1.5" stroke-dasharray="4 2" />
+    
+    <!-- Stroke Rehabilitation (Upper Left) -->
+    <g transform="translate(-180, -180)">
+      <circle cx="0" cy="0" r="70" fill="url(#blueGradient)" stroke="#333" stroke-width="1.5" filter="url(#shadow)" />
+      <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Stroke</text>
+      <text x="0" y="0" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Rehabilitation</text>
+      
+      <!-- Motor Recovery Illustration -->
+      <g transform="translate(0, 25)">
+        <!-- Brain with Hand Motor Area -->
+        <path d="M-25,-15 C-10,-25 10,-25 25,-15 C35,-5 35,15 25,25 C10,35 -10,35 -25,25 C-35,15 -35,-5 -25,-15" 
+              fill="#f0f9ff" stroke="#333" stroke-width="1" />
+        <circle class="pulse" cx="5" cy="-5" r="8" fill="#3498db" opacity="0.7" />
+        
+        <!-- Arm and Hand -->
+        <path d="M20,15 L40,25 L50,15" fill="none" stroke="#333" stroke-width="1.5" />
+        <path d="M50,15 L53,10 L56,15 L59,10 L62,15 L65,10" fill="none" stroke="#333" stroke-width="1.5" />
+        
+        <!-- Movement Indicator -->
+        <path class="pulse" d="M40,25 C45,20 50,15 60,10" fill="none" stroke="#3498db" stroke-width="1" stroke-dasharray="3 1" />
+      </g>
+    </g>
+    
+    <!-- Cognitive Enhancement (Upper Right) -->
+    <g transform="translate(180, -180)">
+      <circle cx="0" cy="0" r="70" fill="url(#purpleGradient)" stroke="#333" stroke-width="1.5" filter="url(#shadow)" />
+      <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Cognitive</text>
+      <text x="0" y="0" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Enhancement</text>
+      
+      <!-- Memory and Attention Illustration -->
+      <g transform="translate(0, 25)">
+        <!-- Brain with Prefrontal and Hippocampus -->
+        <path d="M-25,-15 C-10,-25 10,-25 25,-15 C35,-5 35,15 25,25 C10,35 -10,35 -25,25 C-35,15 -35,-5 -25,-15" 
+              fill="#f0f9ff" stroke="#333" stroke-width="1" />
+        <circle class="pulse" cx="-15" cy="-5" r="8" fill="#a18cd1" opacity="0.7" />
+        <circle class="pulse" cx="10" cy="10" r="6" fill="#a18cd1" opacity="0.7" />
+        
+        <!-- Neural Network Connection -->
+        <path class="dash" d="M-15,-5 C-5,0 0,5 10,10" fill="none" stroke="#a18cd1" stroke-width="1.5" stroke-dasharray="3 2" />
+        
+        <!-- Memory Symbols -->
+        <g class="fadeIn" transform="translate(35, 0)" style="animation-delay: 0.5s">
+          <rect x="-10" y="-10" width="20" height="20" fill="none" stroke="#333" stroke-width="1" />
+          <path d="M-5,-5 L5,5 M-5,5 L5,-5" stroke="#333" stroke-width="1" />
+        </g>
+      </g>
+    </g>
+    
+    <!-- Epilepsy Management (Lower Left) -->
+    <g transform="translate(-180, 180)">
+      <circle cx="0" cy="0" r="70" fill="url(#redGradient)" stroke="#333" stroke-width="1.5" filter="url(#shadow)" />
+      <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Epilepsy</text>
+      <text x="0" y="0" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Management</text>
+      
+      <!-- Seizure Control Illustration -->
+      <g transform="translate(0, 25)">
+        <!-- Brain with Seizure Focus -->
+        <path d="M-25,-15 C-10,-25 10,-25 25,-15 C35,-5 35,15 25,25 C10,35 -10,35 -25,25 C-35,15 -35,-5 -25,-15" 
+              fill="#f0f9ff" stroke="#333" stroke-width="1" />
+        
+        <!-- Seizure Activity and Suppression -->
+        <path class="pulse" d="M-15,-5 C-10,-15 -5,10 0,-10 C5,5 10,-15 15,0 C20,-10 25,5 30,-5" 
+              fill="none" stroke="#ff9a9e" stroke-width="1.5" />
+        
+        <!-- Suppression Effect -->
+        <g class="fadeIn">
+          <path d="M-20,20 L30,-10" stroke="#555" stroke-width="1" />
+          <path d="M-20,-10 L30,20" stroke="#555" stroke-width="1" />
+          <circle cx="5" cy="5" r="25" fill="none" stroke="#555" stroke-width="1" stroke-dasharray="3 2" />
+        </g>
+      </g>
+    </g>
+    
+    <!-- Dementia Intervention (Lower Right) -->
+    <g transform="translate(180, 180)">
+      <circle cx="0" cy="0" r="70" fill="url(#greenGradient)" stroke="#333" stroke-width="1.5" filter="url(#shadow)" />
+      <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Dementia</text>
+      <text x="0" y="0" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Intervention</text>
+      
+      <!-- Neural Protection Illustration -->
+      <g transform="translate(0, 25)">
+        <!-- Brain with Degeneration Areas -->
+        <path d="M-25,-15 C-10,-25 10,-25 25,-15 C35,-5 35,15 25,25 C10,35 -10,35 -25,25 C-35,15 -35,-5 -25,-15" 
+              fill="#f0f9ff" stroke="#333" stroke-width="1" />
+        
+        <!-- Neurodegeneration Points -->
+        <circle cx="-10" cy="-8" r="3" fill="#96e6a1" />
+        <circle cx="15" cy="-3" r="3" fill="#96e6a1" />
+        <circle cx="-5" cy="12" r="3" fill="#96e6a1" />
+        <circle cx="8" cy="8" r="3" fill="#96e6a1" />
+        
+        <!-- Protective Shield Animation -->
+        <path class="pulse" d="M-25,-15 C-10,-25 10,-25 25,-15 C35,-5 35,15 25,25 C10,35 -10,35 -25,25 C-35,15 -35,-5 -25,-15" 
+              fill="none" stroke="#96e6a1" stroke-width="2" stroke-dasharray="5 3" />
+        
+        <!-- Neural Connections -->
+        <path class="dash" d="M-10,-8 L15,-3 M-10,-8 L-5,12 M15,-3 L8,8 M-5,12 L8,8" 
+              fill="none" stroke="#96e6a1" stroke-width="1" />
+      </g>
+    </g>
+  </g>
+  
+  <!-- Legend -->
+  <g transform="translate(680, 560)">
+    <text x="0" y="0" font-size="10" text-anchor="end" fill="#666">© 2025 Adaptive Neural</text>
+    <text x="0" y="15" font-size="10" text-anchor="end" fill="#666">Stimulation System</text>
+  </g>
+</svg>
