@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @keyframes pulse {
+        0% { opacity: 0.3; }
+        50% { opacity: 1; }
+        100% { opacity: 0.3; }
+      }
+      @keyframes rotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes moveUp {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      @keyframes flow {
+        0% { stroke-dashoffset: 100; }
+        100% { stroke-dashoffset: 0; }
+      }
+      .pulse { animation: pulse 3s infinite; }
+      .rotate { animation: rotate 10s linear infinite; }
+      .move-up { animation: moveUp 4s ease-in-out infinite; }
+      .flow-path { animation: flow 3s linear infinite; }
+      text { font-family: Arial, sans-serif; }
+    </style>
+    
+    <!-- Gradients -->
+    <linearGradient id="windowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6dd5ed" />
+      <stop offset="100%" stop-color="#2193b0" />
+    </linearGradient>
+    
+    <linearGradient id="neuronGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd1ff" />
+      <stop offset="100%" stop-color="#faa6ff" />
+    </linearGradient>
+    
+    <linearGradient id="timelineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2193b0" />
+      <stop offset="50%" stop-color="#FFB347" />
+      <stop offset="100%" stop-color="#B06AB3" />
+    </linearGradient>
+    
+    <!-- Glow filters -->
+    <filter id="optimalWindowGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect x="0" y="0" width="800" height="600" fill="#f8f9fa" />
+  
+  <!-- Title -->
+  <text x="400" y="40" font-size="24" font-weight="bold" text-anchor="middle" fill="#333">Neural Plasticity Window Detection System</text>
+  
+  <!-- Brain and Biomarker Sensors -->
+  <g transform="translate(150, 150)">
+    <!-- Brain Outline -->
+    <path d="M100,20 C200,0 250,70 260,140 C270,210 230,270 180,310 C130,350 70,350 20,310 C-30,270 -70,210 -60,140 C-50,70 0,0 100,20" 
+          fill="#f0f9ff" stroke="#666" stroke-width="2" />
+    
+    <!-- EEG Electrodes -->
+    <circle cx="30" cy="100" r="8" fill="#3498db" stroke="#333" stroke-width="1" />
+    <circle cx="170" cy="100" r="8" fill="#3498db" stroke="#333" stroke-width="1" />
+    <circle cx="70" cy="60" r="8" fill="#3498db" stroke="#333" stroke-width="1" />
+    <circle cx="130" cy="60" r="8" fill="#3498db" stroke="#333" stroke-width="1" />
+    <circle cx="100" cy="40" r="8" fill="#3498db" stroke="#333" stroke-width="1" />
+    
+    <!-- Brain Waves (animated) -->
+    <path class="flow-path" d="M30,100 C50,80 70,120 90,100 C110,80 130,120 150,100 C170,80 190,120 210,100" 
+          fill="none" stroke="#3498db" stroke-width="2" stroke-dasharray="5,3" />
+    
+    <!-- ECG Sensor -->
+    <rect x="-90" y="150" width="40" height="30" rx="5" fill="#e74c3c" stroke="#333" stroke-width="1" />
+    <text x="-70" y="170" font-size="10" text-anchor="middle" fill="white">ECG</text>
+    <path d="M-50,165 C-40,165 -40,140 -30,140 C-20,140 -20,190 -10,190 C0,190 0,165 10,165" 
+          fill="none" stroke="#e74c3c" stroke-width="2" />
+          
+    <!-- GSR Sensor -->
+    <rect x="250" y="150" width="40" height="30" rx="5" fill="#27ae60" stroke="#333" stroke-width="1" />
+    <text x="270" y="170" font-size="10" text-anchor="middle" fill="white">GSR</text>
+    <path d="M240,165 C230,155 230,175 220,165 C210,155 210,175 200,165" 
+          fill="none" stroke="#27ae60" stroke-width="2" />
+  </g>
+  
+  <!-- Neuroplasticity Window Detection -->
+  <g transform="translate(400, 200)">
+    <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Plasticity Window Detection</text>
+    
+    <!-- Daily Timeline -->
+    <rect x="-150" y="0" width="300" height="60" rx="5" fill="#f5f5f5" stroke="#333" stroke-width="2" />
+    <text x="0" y="25" font-size="12" text-anchor="middle" fill="#333">24-Hour Biological Rhythm</text>
+    
+    <!-- Timeline Markers -->
+    <line x1="-150" y1="40" x2="150" y2="40" stroke="#333" stroke-width="1" />
+    <text x="-150" y="55" font-size="10" text-anchor="middle" fill="#666">0:00</text>
+    <text x="-75" y="55" font-size="10" text-anchor="middle" fill="#666">6:00</text>
+    <text x="0" y="55" font-size="10" text-anchor="middle" fill="#666">12:00</text>
+    <text x="75" y="55" font-size="10" text-anchor="middle" fill="#666">18:00</text>
+    <text x="150" y="55" font-size="10" text-anchor="middle" fill="#666">24:00</text>
+    
+    <!-- Optimal Windows -->
+    <rect class="pulse" x="-120" y="15" width="30" height="25" rx="5" fill="url(#windowGradient)" opacity="0.7" />
+    <rect class="pulse" x="-20" y="15" width="40" height="25" rx="5" fill="url(#windowGradient)" opacity="0.7" />
+    <rect class="pulse" x="80" y="15" width="40" height="25" rx="5" fill="url(#windowGradient)" opacity="0.7" />
+    
+    <!-- Markers for Current Time -->
+    <circle cx="30" cy="40" r="8" fill="#e74c3c" stroke="#333" stroke-width="1">
+      <animate attributeName="cx" values="-150;150;-150" dur="86.4s" repeatCount="indefinite" />
+    </circle>
+  </g>
+  
+  <!-- Biomarker Analysis -->
+  <g transform="translate(150, 400)">
+    <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Biomarker Analysis</text>
+    
+    <!-- EEG Features -->
+    <g transform="translate(-120, 0)">
+      <rect x="-60" y="0" width="120" height="80" rx="5" fill="#f0f9ff" stroke="#333" stroke-width="1" />
+      <text x="0" y="20" font-size="12" text-anchor="middle" fill="#333">EEG Features</text>
+      
+      <text x="-50" y="40" font-size="10" text-anchor="start" fill="#666">Alpha/Theta: </text>
+      <rect x="20" y="35" width="40" height="10" rx="2" fill="#3498db" opacity="0.7" />
+      
+      <text x="-50" y="60" font-size="10" text-anchor="start" fill="#666">Beta/Gamma: </text>
+      <rect x="20" y="55" width="30" height="10" rx="2" fill="#9b59b6" opacity="0.7" />
+    </g>
+    
+    <!-- HRV Features -->
+    <g transform="translate(0, 0)">
+      <rect x="-60" y="0" width="120" height="80" rx="5" fill="#f0f9ff" stroke="#333" stroke-width="1" />
+      <text x="0" y="20" font-size="12" text-anchor="middle" fill="#333">HRV Features</text>
+      
+      <text x="-50" y="40" font-size="10" text-anchor="start" fill="#666">HF Power: </text>
+      <rect x="20" y="35" width="35" height="10" rx="2" fill="#e74c3c" opacity="0.7" />
+      
+      <text x="-50" y="60" font-size="10" text-anchor="start" fill="#666">RMSSD: </text>
+      <rect x="20" y="55" width="45" height="10" rx="2" fill="#c0392b" opacity="0.7" />
+    </g>
+    
+    <!-- Circadian Features -->
+    <g transform="translate(120, 0)">
+      <rect x="-60" y="0" width="120" height="80" rx="5" fill="#f0f9ff" stroke="#333" stroke-width="1" />
+      <text x="0" y="20" font-size="12" text-anchor="middle" fill="#333">Circadian Features</text>
+      
+      <text x="-50" y="40" font-size="10" text-anchor="start" fill="#666">Phase: </text>
+      <rect x="20" y="35" width="38" height="10" rx="2" fill="#27ae60" opacity="0.7" />
+      
+      <text x="-50" y="60" font-size="10" text-anchor="start" fill="#666">Post-Sleep: </text>
+      <rect x="20" y="55" width="25" height="10" rx="2" fill="#2ecc71" opacity="0.7" />
+    </g>
+  </g>
+  
+  <!-- Machine Learning Model -->
+  <g transform="translate(400, 400)">
+    <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">ML Prediction Model</text>
+    
+    <!-- Neural Network Diagram -->
+    <rect x="-100" y="0" width="200" height="100" rx="5" fill="#f5f5f5" stroke="#333" stroke-width="2" />
+    
+    <!-- Input Layer -->
+    <circle class="pulse" cx="-70" cy="20" r="8" fill="#3498db" />
+    <circle class="pulse" cx="-70" cy="40" r="8" fill="#e74c3c" />
+    <circle class="pulse" cx="-70" cy="60" r="8" fill="#27ae60" />
+    <circle class="pulse" cx="-70" cy="80" r="8" fill="#f1c40f" />
+    
+    <!-- Hidden Layer 1 -->
+    <circle class="pulse" cx="-20" cy="25" r="8" fill="url(#neuronGradient)" />
+    <circle class="pulse" cx="-20" cy="50" r="8" fill="url(#neuronGradient)" />
+    <circle class="pulse" cx="-20" cy="75" r="8" fill="url(#neuronGradient)" />
+    
+    <!-- Hidden Layer 2 -->
+    <circle class="pulse" cx="30" cy="30" r="8" fill="url(#neuronGradient)" />
+    <circle class="pulse" cx="30" cy="70" r="8" fill="url(#neuronGradient)" />
+    
+    <!-- Output Layer -->
+    <circle class="pulse" cx="70" cy="50" r="10" fill="#f39c12" />
+    
+    <!-- Connections -->
+    <g opacity="0.3">
+      <!-- Input to Hidden 1 -->
+      <line x1="-70" y1="20" x2="-20" y2="25" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="20" x2="-20" y2="50" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="20" x2="-20" y2="75" stroke="#333" stroke-width="1" />
+      
+      <line x1="-70" y1="40" x2="-20" y2="25" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="40" x2="-20" y2="50" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="40" x2="-20" y2="75" stroke="#333" stroke-width="1" />
+      
+      <line x1="-70" y1="60" x2="-20" y2="25" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="60" x2="-20" y2="50" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="60" x2="-20" y2="75" stroke="#333" stroke-width="1" />
+      
+      <line x1="-70" y1="80" x2="-20" y2="25" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="80" x2="-20" y2="50" stroke="#333" stroke-width="1" />
+      <line x1="-70" y1="80" x2="-20" y2="75" stroke="#333" stroke-width="1" />
+      
+      <!-- Hidden 1 to Hidden 2 -->
+      <line x1="-20" y1="25" x2="30" y2="30" stroke="#333" stroke-width="1" />
+      <line x1="-20" y1="25" x2="30" y2="70" stroke="#333" stroke-width="1" />
+      
+      <line x1="-20" y1="50" x2="30" y2="30" stroke="#333" stroke-width="1" />
+      <line x1="-20" y1="50" x2="30" y2="70" stroke="#333" stroke-width="1" />
+      
+      <line x1="-20" y1="75" x2="30" y2="30" stroke="#333" stroke-width="1" />
+      <line x1="-20" y1="75" x2="30" y2="70" stroke="#333" stroke-width="1" />
+      
+      <!-- Hidden 2 to Output -->
+      <line x1="30" y1="30" x2="70" y2="50" stroke="#333" stroke-width="1" />
+      <line x1="30" y1="70" x2="70" y2="50" stroke="#333" stroke-width="1" />
+    </g>
+    
+    <!-- Plasticity Score Output -->
+    <text x="70" y="90" font-size="12" text-anchor="middle" fill="#333">Plasticity Score</text>
+    <text x="70" y="50" font-size="10" text-anchor="middle" fill="white" font-weight="bold">0.87</text>
+  </g>
+  
+  <!-- Optimal Window Result -->
+  <g transform="translate(650, 200)">
+    <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">Optimal Window</text>
+    
+    <!-- Window Visualization -->
+    <rect x="-80" y="0" width="160" height="100" rx="10" fill="#f5f5f5" stroke="#333" stroke-width="2" />
+    
+    <!-- Current Window Status -->
+    <g class="move-up">
+      <circle cx="0" cy="50" r="40" fill="url(#windowGradient)" opacity="0.8" filter="url(#optimalWindowGlow)" />
+      <text x="0" y="45" font-size="14" font-weight="bold" text-anchor="middle" fill="white">HIGH</text>
+      <text x="0" y="65" font-size="14" font-weight="bold" text-anchor="middle" fill="white">PLASTICITY</text>
+    </g>
+    
+    <!-- Time Information -->
+    <text x="0" y="120" font-size="12" text-anchor="middle" fill="#333">Current Time: 10:45 AM</text>
+    <text x="0" y="140" font-size="12" text-anchor="middle" fill="#333">Confidence: 92%</text>
+  </g>
+  
+  <!-- System Integration -->
+  <g transform="translate(650, 400)">
+    <text x="0" y="-20" font-size="16" font-weight="bold" text-anchor="middle" fill="#333">System Integration</text>
+    
+    <!-- Integration Components -->
+    <rect x="-80" y="0" width="160" height="100" rx="5" fill="#f5f5f5" stroke="#333" stroke-width="2" />
+    
+    <!-- Arrows connecting to stimulation scheduler -->
+    <path d="M-60,30 C-40,30 -40,50 0,50" fill="none" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" />
+    <text x="-50" y="25" font-size="10" text-anchor="middle" fill="#666">Trigger</text>
+    
+    <path d="M-60,70 C-40,70 -40,50 0,50" fill="none" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" />
+    <text x="-50" y="85" font-size="10" text-anchor="middle" fill="#666">Parameters</text>
+    
+    <path d="M0,50 C40,50 40,50 60,50" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="30" y="45" font-size="10" text-anchor="middle" fill="#666">Activate</text>
+    
+    <!-- Stimulation Controller Icon -->
+    <g class="rotate">
+      <circle cx="0" cy="50" r="25" fill="#3498db" opacity="0.8" />
+      <path d="M-12,40 L12,40 L0,60 Z" fill="white" />
+      <path d="M-12,60 L12,60 L0,40 Z" fill="white" opacity="0.5" />
+    </g>
+  </g>
+  
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 Z" fill="#333" />
+    </marker>
+  </defs>
+  
+  <!-- Footer -->
+  <text x="400" y="580" font-size="12" text-anchor="middle" fill="#666">Automatic detection of optimal timing for neuroplasticity-enhancing stimulation</text>
+</svg>
