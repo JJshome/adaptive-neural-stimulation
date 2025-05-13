@@ -1,910 +1,549 @@
-"""
-System Controller
-
-This module serves as the main controller for the Adaptive Phase-Differential Brain 
-Nerve Stimulation System, coordinating between the different components and algorithms
-to provide an integrated therapeutic system.
-"""
-
-import time
 import logging
+import time
+from typing import Dict, List, Tuple, Optional, Union, Any
 import threading
-import numpy as np
 import json
-from datetime import datetime
-from enum import Enum
-from pathlib import Path
+import os
+import numpy as np
 
-# Import core system modules
-from .session_manager import SessionManager
-from .config_handler import ConfigHandler
-from .device_manager import DeviceManager
-from .data_manager import DataManager
-
-# Import algorithm modules
-from ..algorithms.brainwave_sync import BrainwaveSynchronization
-from ..algorithms.plasticity_window import PlasticityWindowDetector
-from ..algorithms.spatiotemporal_pattern import SpatiotemporalPatternGenerator
-from ..algorithms.adaptive_feedback import AdaptiveFeedbackController
-
-# Import data processing modules
-from ..data_processing.eeg_processor import EEGProcessor
-from ..data_processing.biosignal_processor import BiosignalProcessor
-from ..data_processing.neural_response import NeuralResponseAnalyzer
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger('system_controller')
-
-class SystemState(Enum):
-    """Enumeration of possible system states."""
-    IDLE = 0
-    INITIALIZING = 1
-    CALIBRATING = 2
-    MONITORING = 3
-    STIMULATING = 4
-    ANALYZING = 5
-    ERROR = 6
-    SHUTDOWN = 7
+# Set up logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 class SystemController:
     """
-    Main controller class for the Adaptive Phase-Differential Brain Nerve Stimulation System.
-    
-    This class coordinates between the different components and algorithms to provide
-    an integrated therapeutic system. It manages the system state, handles user interactions,
-    and orchestrates the data flow between various modules.
+    Central controller for the Adaptive Neural Stimulation System.
+    Coordinates all system components and manages the overall system state.
     """
     
-    def __init__(self, config_path=None):
+    def __init__(self, config_path: str = None):
         """
         Initialize the system controller.
         
         Args:
-            config_path (str, optional): Path to configuration file
+            config_path: Path to configuration file
         """
-        self.state = SystemState.IDLE
-        self.logger = logger
+        self.components = {}  # Dictionary of component instances
+        self.system_state = {
+            "is_running": False,
+            "session_active": False,
+            "treatment_active": False,
+            "error_state": False
+        }
+        self.config = self._load_config(config_path)
+        self.event_handlers = {}  # Dictionary of event handler callbacks
+        self.event_queue = []  # Queue of pending events
+        self.event_thread = None
+        self.event_thread_running = False
+        self.lock = threading.RLock()  # Reentrant lock for thread safety
         
-        # Load configuration
-        self._load_configuration(config_path)
+        # Initialize event handling
+        self._init_event_handling()
         
-        # Initialize core components
-        self._init_core_components()
+        logger.info("SystemController initialized")
         
-        # Initialize algorithm modules
-        self._init_algorithm_modules()
-        
-        # Initialize data processing modules
-        self._init_data_processing()
-        
-        # System state variables
-        self.is_running = False
-        self.threads = {}
-        self.last_error = None
-        self.current_session = None
-        
-        self.logger.info("System controller initialized")
-    
-    def _load_configuration(self, config_path):
+    def _load_config(self, config_path: str) -> dict:
         """
-        Load system configuration from file.
+        Load configuration from file.
         
         Args:
-            config_path (str, optional): Path to configuration file
+            config_path: Path to configuration file
+            
+        Returns:
+            Configuration dictionary
         """
-        self.logger.info("Loading configuration")
-        self.state = SystemState.INITIALIZING
+        default_config = {
+            "system_name": "Adaptive Neural Stimulation System",
+            "version": "1.0.0",
+            "log_level": "INFO",
+            "data_directory": "data",
+            "safety_limits": {
+                "max_current": 5.0,  # mA
+                "max_frequency": 100.0,  # Hz
+                "max_session_duration": 60.0  # minutes
+            },
+            "event_processing_interval": 0.1  # seconds
+        }
         
-        # Set default config path if not provided
-        if config_path is None:
-            config_path = Path(__file__).parent.parent / "config" / "system_config.json"
+        # Load from file if provided
+        if config_path and os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    logger.info(f"Loaded configuration from {config_path}")
+                    
+                    # Merge with default config
+                    merged_config = {**default_config, **config}
+                    return merged_config
+            except Exception as e:
+                logger.error(f"Failed to load configuration: {e}")
+                
+        return default_config
         
-        # Initialize configuration handler
-        self.config_handler = ConfigHandler(config_path)
-        self.config = self.config_handler.load_config()
+    def _init_event_handling(self):
+        """Initialize event handling system."""
+        # Register default event handlers
+        self.register_event_handler("system_start", self._handle_system_start)
+        self.register_event_handler("system_stop", self._handle_system_stop)
+        self.register_event_handler("error", self._handle_error)
+        self.register_event_handler("component_added", self._handle_component_added)
+        self.register_event_handler("component_removed", self._handle_component_removed)
         
-        # Set up logging level based on configuration
-        if 'logging' in self.config and 'level' in self.config['logging']:
-            log_level = getattr(logging, self.config['logging']['level'].upper())
-            self.logger.setLevel(log_level)
-            self.logger.info(f"Log level set to {log_level}")
-    
-    def _init_core_components(self):
-        """Initialize core system components."""
-        self.logger.info("Initializing core components")
-        
-        # Initialize session manager
-        self.session_manager = SessionManager()
-        
-        # Initialize device manager
-        self.device_manager = DeviceManager(self.config.get('devices', {}))
-        
-        # Initialize data manager
-        data_storage_path = self.config.get('data_storage', {}).get('path', 'data')
-        self.data_manager = DataManager(data_storage_path)
-    
-    def _init_algorithm_modules(self):
-        """Initialize algorithm modules."""
-        self.logger.info("Initializing algorithm modules")
-        
-        # Extract algorithm configuration
-        algo_config = self.config.get('algorithms', {})
-        
-        # Initialize brainwave synchronization module
-        brainwave_config = algo_config.get('brainwave_sync', {})
-        self.brainwave_sync = BrainwaveSynchronization(
-            sampling_rate=brainwave_config.get('sampling_rate', 1000),
-            target_band=brainwave_config.get('target_band', 'alpha'),
-            n_channels=brainwave_config.get('n_channels', 8)
-        )
-        
-        # Initialize plasticity window detector
-        plasticity_config = algo_config.get('plasticity_window', {})
-        self.plasticity_detector = PlasticityWindowDetector(
-            sampling_rate=plasticity_config.get('sampling_rate', 250),
-            history_duration=plasticity_config.get('history_duration', 14)
-        )
-        
-        # Initialize spatiotemporal pattern generator
-        pattern_config = algo_config.get('spatiotemporal_pattern', {})
-        self.pattern_generator = SpatiotemporalPatternGenerator(
-            n_channels=pattern_config.get('n_channels', 16),
-            sampling_rate=pattern_config.get('sampling_rate', 1000)
-        )
-        
-        # Initialize adaptive feedback controller
-        feedback_config = algo_config.get('adaptive_feedback', {})
-        self.feedback_controller = AdaptiveFeedbackController(
-            update_rate=feedback_config.get('update_rate', 1.0),
-            learning_rate=feedback_config.get('learning_rate', 0.1)
-        )
-    
-    def _init_data_processing(self):
-        """Initialize data processing modules."""
-        self.logger.info("Initializing data processing modules")
-        
-        # Extract processing configuration
-        processing_config = self.config.get('data_processing', {})
-        
-        # Initialize EEG processor
-        eeg_config = processing_config.get('eeg', {})
-        self.eeg_processor = EEGProcessor(
-            sampling_rate=eeg_config.get('sampling_rate', 1000),
-            n_channels=eeg_config.get('n_channels', 8),
-            filter_settings=eeg_config.get('filters', None)
-        )
-        
-        # Initialize biosignal processor
-        biosignal_config = processing_config.get('biosignals', {})
-        self.biosignal_processor = BiosignalProcessor(
-            signals=biosignal_config.get('signals', ['ecg', 'gsr']),
-            sampling_rates=biosignal_config.get('sampling_rates', {'ecg': 250, 'gsr': 100})
-        )
-        
-        # Initialize neural response analyzer
-        response_config = processing_config.get('neural_response', {})
-        self.response_analyzer = NeuralResponseAnalyzer(
-            metrics=response_config.get('metrics', ['amplitude', 'latency']),
-            window_size=response_config.get('window_size', 0.5)
-        )
-    
-    def start(self):
+    def register_component(self, component_id: str, component: Any) -> bool:
         """
-        Start the system and transition to monitoring state.
+        Register a system component.
+        
+        Args:
+            component_id: Unique identifier for the component
+            component: Component instance
+            
+        Returns:
+            True if component registered successfully, False if already exists
+        """
+        with self.lock:
+            if component_id in self.components:
+                logger.warning(f"Component '{component_id}' already registered")
+                return False
+                
+            self.components[component_id] = component
+            
+            # Trigger event
+            self.trigger_event("component_added", {
+                "component_id": component_id,
+                "component_type": type(component).__name__
+            })
+            
+            logger.info(f"Registered component: {component_id}")
+            return True
+            
+    def unregister_component(self, component_id: str) -> bool:
+        """
+        Unregister a system component.
+        
+        Args:
+            component_id: ID of the component to unregister
+            
+        Returns:
+            True if component unregistered successfully, False if not found
+        """
+        with self.lock:
+            if component_id not in self.components:
+                logger.warning(f"Component '{component_id}' not found")
+                return False
+                
+            component = self.components.pop(component_id)
+            
+            # Trigger event
+            self.trigger_event("component_removed", {
+                "component_id": component_id,
+                "component_type": type(component).__name__
+            })
+            
+            logger.info(f"Unregistered component: {component_id}")
+            return True
+            
+    def get_component(self, component_id: str) -> Optional[Any]:
+        """
+        Get a registered component.
+        
+        Args:
+            component_id: ID of the component to retrieve
+            
+        Returns:
+            Component instance or None if not found
+        """
+        return self.components.get(component_id)
+        
+    def start_system(self) -> bool:
+        """
+        Start the system.
         
         Returns:
-            bool: True if system started successfully, False otherwise
+            True if system started successfully, False if already running
         """
-        if self.is_running:
-            self.logger.warning("System is already running")
-            return False
-        
-        self.logger.info("Starting system")
-        self.state = SystemState.INITIALIZING
-        
-        try:
-            # Connect to devices
-            if not self.device_manager.connect_all():
-                self.logger.error("Failed to connect to all devices")
-                self.state = SystemState.ERROR
-                self.last_error = "Device connection failure"
+        with self.lock:
+            if self.system_state["is_running"]:
+                logger.warning("System already running")
                 return False
-            
-            # Start data acquisition threads
-            self._start_data_acquisition()
-            
-            # Transition to monitoring state
-            self.state = SystemState.MONITORING
-            self.is_running = True
-            
-            # Start main control loop in a separate thread
-            self.threads['control_loop'] = threading.Thread(
-                target=self._control_loop,
+                
+            # Start event processing thread
+            self.event_thread_running = True
+            self.event_thread = threading.Thread(
+                target=self._event_processing_loop,
                 daemon=True
             )
-            self.threads['control_loop'].start()
+            self.event_thread.start()
             
+            # Update system state
+            self.system_state["is_running"] = True
+            self.system_state["error_state"] = False
+            
+            # Trigger event
+            self.trigger_event("system_start", {
+                "timestamp": time.time(),
+                "components": list(self.components.keys())
+            })
+            
+            logger.info("System started")
             return True
             
-        except Exception as e:
-            self.logger.error(f"Error starting system: {str(e)}")
-            self.state = SystemState.ERROR
-            self.last_error = str(e)
-            return False
-    
-    def stop(self):
+    def stop_system(self) -> bool:
         """
-        Stop the system and return to idle state.
+        Stop the system.
         
         Returns:
-            bool: True if system stopped successfully, False otherwise
+            True if system stopped successfully, False if not running
         """
-        if not self.is_running:
-            self.logger.warning("System is not running")
-            return False
-        
-        self.logger.info("Stopping system")
-        self.state = SystemState.SHUTDOWN
-        
-        try:
-            # Set running flag to false to stop threads
-            self.is_running = False
+        with self.lock:
+            if not self.system_state["is_running"]:
+                logger.warning("System not running")
+                return False
+                
+            # Stop event processing thread
+            self.event_thread_running = False
+            if self.event_thread and self.event_thread.is_alive():
+                self.event_thread.join(timeout=2.0)
+                
+            # Update system state
+            self.system_state["is_running"] = False
+            self.system_state["session_active"] = False
+            self.system_state["treatment_active"] = False
             
-            # Wait for threads to finish
-            for thread_name, thread in self.threads.items():
-                if thread.is_alive():
-                    thread.join(timeout=5.0)
-                    if thread.is_alive():
-                        self.logger.warning(f"Thread {thread_name} did not exit cleanly")
+            # Trigger event
+            self.trigger_event("system_stop", {
+                "timestamp": time.time()
+            })
             
-            # Disconnect from devices
-            self.device_manager.disconnect_all()
-            
-            # End current session if active
-            if self.current_session is not None:
-                self.session_manager.end_session(self.current_session)
-                self.current_session = None
-            
-            # Return to idle state
-            self.state = SystemState.IDLE
-            
+            logger.info("System stopped")
             return True
             
-        except Exception as e:
-            self.logger.error(f"Error stopping system: {str(e)}")
-            self.state = SystemState.ERROR
-            self.last_error = str(e)
-            return False
-    
-    def create_session(self, patient_id, protocol_id=None, notes=None):
+    def register_event_handler(self, event_type: str, handler: callable) -> None:
         """
-        Create a new therapy session.
+        Register a handler for a specific event type.
         
         Args:
-            patient_id (str): Unique patient identifier
-            protocol_id (str, optional): Identifier for treatment protocol
-            notes (str, optional): Session notes
+            event_type: Type of event to handle
+            handler: Callback function to handle the event
+        """
+        if event_type not in self.event_handlers:
+            self.event_handlers[event_type] = []
+            
+        if handler not in self.event_handlers[event_type]:
+            self.event_handlers[event_type].append(handler)
+            logger.debug(f"Registered handler for event type: {event_type}")
+            
+    def unregister_event_handler(self, event_type: str, handler: callable) -> bool:
+        """
+        Unregister an event handler.
+        
+        Args:
+            event_type: Type of event
+            handler: Handler function to unregister
             
         Returns:
-            str: Session ID if successful, None otherwise
+            True if handler unregistered successfully, False if not found
         """
-        if self.current_session is not None:
-            self.logger.warning("A session is already active")
-            return None
+        if event_type in self.event_handlers and handler in self.event_handlers[event_type]:
+            self.event_handlers[event_type].remove(handler)
+            logger.debug(f"Unregistered handler for event type: {event_type}")
+            return True
+        return False
         
-        try:
-            # Create new session
+    def trigger_event(self, event_type: str, event_data: dict = None) -> None:
+        """
+        Trigger an event.
+        
+        Args:
+            event_type: Type of event to trigger
+            event_data: Data associated with the event
+        """
+        event = {
+            "type": event_type,
+            "data": event_data or {},
+            "timestamp": time.time()
+        }
+        
+        with self.lock:
+            self.event_queue.append(event)
+            
+        logger.debug(f"Triggered event: {event_type}")
+        
+    def _event_processing_loop(self) -> None:
+        """Background loop for processing events."""
+        logger.debug("Event processing loop started")
+        
+        while self.event_thread_running:
+            try:
+                # Process events in queue
+                events_to_process = []
+                with self.lock:
+                    if self.event_queue:
+                        events_to_process = self.event_queue.copy()
+                        self.event_queue.clear()
+                        
+                for event in events_to_process:
+                    self._process_event(event)
+                    
+                # Sleep for a short interval
+                time.sleep(self.config.get("event_processing_interval", 0.1))
+                
+            except Exception as e:
+                logger.error(f"Error in event processing loop: {e}")
+                
+        logger.debug("Event processing loop stopped")
+        
+    def _process_event(self, event: dict) -> None:
+        """
+        Process a single event.
+        
+        Args:
+            event: Event dictionary with type, data, and timestamp
+        """
+        event_type = event["type"]
+        event_data = event["data"]
+        
+        # Call handlers for this event type
+        if event_type in self.event_handlers:
+            for handler in self.event_handlers[event_type]:
+                try:
+                    handler(event_data)
+                except Exception as e:
+                    logger.error(f"Error in event handler for {event_type}: {e}")
+                    
+    def _handle_system_start(self, event_data: dict) -> None:
+        """
+        Handle system start event.
+        
+        Args:
+            event_data: Event data
+        """
+        logger.info(f"System started with {len(self.components)} components")
+        
+    def _handle_system_stop(self, event_data: dict) -> None:
+        """
+        Handle system stop event.
+        
+        Args:
+            event_data: Event data
+        """
+        logger.info("System stopped")
+        
+    def _handle_error(self, event_data: dict) -> None:
+        """
+        Handle error event.
+        
+        Args:
+            event_data: Event data
+        """
+        error = event_data.get("error", "Unknown error")
+        logger.error(f"System error: {error}")
+        self.system_state["error_state"] = True
+        
+    def _handle_component_added(self, event_data: dict) -> None:
+        """
+        Handle component added event.
+        
+        Args:
+            event_data: Event data
+        """
+        component_id = event_data.get("component_id")
+        component_type = event_data.get("component_type")
+        logger.info(f"Component added: {component_id} ({component_type})")
+        
+    def _handle_component_removed(self, event_data: dict) -> None:
+        """
+        Handle component removed event.
+        
+        Args:
+            event_data: Event data
+        """
+        component_id = event_data.get("component_id")
+        component_type = event_data.get("component_type")
+        logger.info(f"Component removed: {component_id} ({component_type})")
+        
+    def start_session(self, session_config: dict) -> str:
+        """
+        Start a treatment session.
+        
+        Args:
+            session_config: Session configuration
+            
+        Returns:
+            Session ID if started successfully, empty string if failed
+        """
+        with self.lock:
+            if not self.system_state["is_running"]:
+                logger.error("Cannot start session: System not running")
+                return ""
+                
+            if self.system_state["session_active"]:
+                logger.warning("Session already active")
+                return ""
+                
+            # Generate session ID
+            session_id = f"session_{int(time.time())}"
+            
+            # Update system state
+            self.system_state["session_active"] = True
+            
+            # Prepare session data
             session_data = {
-                'patient_id': patient_id,
-                'protocol_id': protocol_id,
-                'notes': notes,
-                'start_time': datetime.now().isoformat()
+                "session_id": session_id,
+                "start_time": time.time(),
+                "config": session_config,
+                "user_id": session_config.get("user_id", "unknown"),
+                "protocol_id": session_config.get("protocol_id", "unknown")
             }
             
-            session_id = self.session_manager.create_session(session_data)
-            self.current_session = session_id
+            # Trigger event
+            self.trigger_event("session_start", session_data)
             
-            self.logger.info(f"Created new session with ID: {session_id}")
+            logger.info(f"Started session: {session_id}")
             return session_id
             
-        except Exception as e:
-            self.logger.error(f"Error creating session: {str(e)}")
-            self.last_error = str(e)
-            return None
-    
-    def end_session(self):
+    def stop_session(self, session_id: str) -> bool:
         """
-        End the current therapy session.
+        Stop a treatment session.
         
+        Args:
+            session_id: ID of the session to stop
+            
         Returns:
-            bool: True if session ended successfully, False otherwise
+            True if session stopped successfully, False if not active
         """
-        if self.current_session is None:
-            self.logger.warning("No active session to end")
-            return False
-        
-        try:
-            # End current session
-            self.session_manager.end_session(self.current_session)
+        with self.lock:
+            if not self.system_state["session_active"]:
+                logger.warning("No active session")
+                return False
+                
+            # Stop any active treatment
+            if self.system_state["treatment_active"]:
+                self.stop_treatment()
+                
+            # Update system state
+            self.system_state["session_active"] = False
             
-            # Generate session summary
-            summary = self._generate_session_summary()
+            # Trigger event
+            self.trigger_event("session_stop", {
+                "session_id": session_id,
+                "end_time": time.time()
+            })
             
-            # Save summary to data manager
-            summary_path = f"sessions/{self.current_session}/summary.json"
-            self.data_manager.save_json(summary_path, summary)
-            
-            # Clear current session
-            session_id = self.current_session
-            self.current_session = None
-            
-            self.logger.info(f"Ended session with ID: {session_id}")
+            logger.info(f"Stopped session: {session_id}")
             return True
             
-        except Exception as e:
-            self.logger.error(f"Error ending session: {str(e)}")
-            self.last_error = str(e)
-            return False
-    
-    def _generate_session_summary(self):
+    def start_treatment(self, treatment_config: dict) -> bool:
         """
-        Generate a summary of the current session.
-        
-        Returns:
-            dict: Session summary data
-        """
-        # Get session details
-        session_details = self.session_manager.get_session(self.current_session)
-        
-        # Create summary structure
-        summary = {
-            'session_id': self.current_session,
-            'patient_id': session_details.get('patient_id'),
-            'protocol_id': session_details.get('protocol_id'),
-            'start_time': session_details.get('start_time'),
-            'end_time': datetime.now().isoformat(),
-            'stimulation_events': session_details.get('stimulation_events', []),
-            'neural_responses': session_details.get('neural_responses', []),
-            'metrics': {
-                'total_stimulation_time': session_details.get('total_stimulation_time', 0),
-                'average_response_amplitude': session_details.get('average_response_amplitude', 0),
-                'plasticity_score': session_details.get('plasticity_score', 0)
-            }
-        }
-        
-        return summary
-    
-    def _start_data_acquisition(self):
-        """Start data acquisition threads for each connected device."""
-        self.logger.info("Starting data acquisition threads")
-        
-        # Get connected devices by type
-        eeg_devices = self.device_manager.get_devices_by_type('eeg')
-        biosignal_devices = self.device_manager.get_devices_by_type('biosignal')
-        
-        # Start EEG acquisition thread if EEG devices are connected
-        if eeg_devices:
-            self.threads['eeg_acquisition'] = threading.Thread(
-                target=self._eeg_acquisition_loop,
-                args=(eeg_devices[0],),  # Use the first EEG device
-                daemon=True
-            )
-            self.threads['eeg_acquisition'].start()
-        
-        # Start biosignal acquisition threads for each biosignal device
-        for i, device in enumerate(biosignal_devices):
-            thread_name = f'biosignal_acquisition_{i}'
-            self.threads[thread_name] = threading.Thread(
-                target=self._biosignal_acquisition_loop,
-                args=(device,),
-                daemon=True
-            )
-            self.threads[thread_name].start()
-    
-    def _eeg_acquisition_loop(self, device):
-        """
-        Main loop for EEG data acquisition.
+        Start a treatment within a session.
         
         Args:
-            device: EEG device object
-        """
-        self.logger.info(f"Starting EEG acquisition from device: {device.name}")
-        
-        buffer_size = self.config.get('data_processing', {}).get('eeg', {}).get('buffer_size', 1000)
-        eeg_buffer = np.zeros((device.n_channels, buffer_size))
-        
-        while self.is_running:
-            try:
-                # Get new EEG data from device
-                new_data = device.get_data()
-                
-                if new_data is not None and new_data.size > 0:
-                    # Update buffer
-                    n_samples = new_data.shape[1]
-                    eeg_buffer = np.roll(eeg_buffer, -n_samples, axis=1)
-                    eeg_buffer[:, -n_samples:] = new_data
-                    
-                    # Process EEG data
-                    processed_data = self.eeg_processor.process(eeg_buffer)
-                    
-                    # Update brainwave synchronization module
-                    self.brainwave_sync.update_buffer(new_data)
-                    
-                    # Save data if session is active
-                    if self.current_session is not None:
-                        timestamp = datetime.now().isoformat()
-                        data_path = f"sessions/{self.current_session}/eeg/{timestamp}.npy"
-                        self.data_manager.save_array(data_path, new_data)
-                
-                # Small sleep to prevent CPU overload
-                time.sleep(0.001)
-                
-            except Exception as e:
-                self.logger.error(f"Error in EEG acquisition: {str(e)}")
-                time.sleep(1.0)  # Longer sleep on error
-    
-    def _biosignal_acquisition_loop(self, device):
-        """
-        Main loop for biosignal data acquisition.
-        
-        Args:
-            device: Biosignal device object
-        """
-        self.logger.info(f"Starting biosignal acquisition from device: {device.name}")
-        
-        while self.is_running:
-            try:
-                # Get new biosignal data from device
-                new_data = device.get_data()
-                
-                if new_data is not None and len(new_data) > 0:
-                    # Process biosignal data
-                    processed_data = self.biosignal_processor.process(
-                        new_data, 
-                        signal_type=device.signal_type
-                    )
-                    
-                    # Update plasticity detector if ECG data available
-                    if device.signal_type == 'ecg' and 'rr_intervals' in processed_data:
-                        self.plasticity_detector.update_features(
-                            rr_intervals=processed_data['rr_intervals'],
-                            timestamp=datetime.now()
-                        )
-                    
-                    # Save data if session is active
-                    if self.current_session is not None:
-                        timestamp = datetime.now().isoformat()
-                        data_path = f"sessions/{self.current_session}/biosignals/{device.signal_type}/{timestamp}.json"
-                        self.data_manager.save_json(data_path, processed_data)
-                
-                # Small sleep to prevent CPU overload
-                time.sleep(0.01)
-                
-            except Exception as e:
-                self.logger.error(f"Error in biosignal acquisition: {str(e)}")
-                time.sleep(1.0)  # Longer sleep on error
-    
-    def _control_loop(self):
-        """Main control loop for system operation."""
-        self.logger.info("Starting main control loop")
-        
-        control_interval = self.config.get('system', {}).get('control_interval', 0.1)
-        
-        while self.is_running:
-            try:
-                # Update system state based on current conditions
-                self._update_system_state()
-                
-                # Perform state-specific actions
-                if self.state == SystemState.MONITORING:
-                    self._monitoring_actions()
-                elif self.state == SystemState.STIMULATING:
-                    self._stimulation_actions()
-                elif self.state == SystemState.ANALYZING:
-                    self._analysis_actions()
-                elif self.state == SystemState.ERROR:
-                    self._error_actions()
-                
-                # Sleep for the specified control interval
-                time.sleep(control_interval)
-                
-            except Exception as e:
-                self.logger.error(f"Error in control loop: {str(e)}")
-                self.state = SystemState.ERROR
-                self.last_error = str(e)
-                time.sleep(1.0)  # Longer sleep on error
-    
-    def _update_system_state(self):
-        """Update system state based on current conditions."""
-        # Skip state update if in special states
-        if self.state in [SystemState.INITIALIZING, SystemState.CALIBRATING, 
-                        SystemState.SHUTDOWN, SystemState.ERROR]:
-            return
-        
-        # Check for device errors
-        if self.device_manager.check_errors():
-            self.state = SystemState.ERROR
-            self.last_error = "Device error detected"
-            return
-        
-        # Check for active stimulation
-        stimulation_devices = self.device_manager.get_devices_by_type('stimulator')
-        if any(device.is_stimulating() for device in stimulation_devices):
-            if self.state != SystemState.STIMULATING:
-                self.state = SystemState.STIMULATING
-            return
-        
-        # Default to monitoring state
-        if self.state != SystemState.MONITORING:
-            self.state = SystemState.MONITORING
-    
-    def _monitoring_actions(self):
-        """Perform actions during monitoring state."""
-        # Check if current time is in a high plasticity window
-        is_high_plasticity, plasticity_info = self.plasticity_detector.is_high_plasticity_window()
-        
-        if is_high_plasticity and self.current_session is not None:
-            # Transition to stimulation state if in high plasticity window and session active
-            target_phase = self.config.get('algorithms', {}).get('brainwave_sync', {}).get('target_phase', 0)
-            
-            # Prepare stimulation pattern based on optimal timing
-            self._prepare_stimulation(target_phase)
-            
-            # Log plasticity window detection
-            self.logger.info(f"High plasticity window detected, score: {plasticity_info['plasticity_score']:.2f}")
-            
-            # Update session data
-            self.session_manager.update_session(
-                self.current_session,
-                {'plasticity_events': plasticity_info}
-            )
-    
-    def _prepare_stimulation(self, target_phase):
-        """
-        Prepare stimulation pattern based on brainwave phase and neural state.
-        
-        Args:
-            target_phase (float): Target phase for stimulation in degrees
-        """
-        # Get optimal stimulation timing
-        timing, confidence = self.brainwave_sync.get_optimal_stimulation_timings(target_phase)
-        
-        if confidence < 0.5:
-            self.logger.warning(f"Low confidence in phase estimation: {confidence:.2f}")
-            return
-        
-        # Get stimulation devices
-        stimulation_devices = self.device_manager.get_devices_by_type('stimulator')
-        if not stimulation_devices:
-            self.logger.error("No stimulation devices available")
-            return
-        
-        # Generate spatiotemporal stimulation pattern
-        pattern = self.pattern_generator.generate_pattern()
-        
-        # Apply pattern to stimulation devices with appropriate timing
-        delay_ms = int(timing * 1000 / self.brainwave_sync.sampling_rate)
-        
-        for i, device in enumerate(stimulation_devices):
-            # Calculate device-specific parameters based on pattern
-            params = {
-                'amplitude': pattern['amplitudes'][i] if i < len(pattern['amplitudes']) else 0,
-                'frequency': pattern['frequencies'][i] if i < len(pattern['frequencies']) else 0,
-                'duration': pattern['durations'][i] if i < len(pattern['durations']) else 0,
-                'delay': delay_ms + pattern['delays'][i] if i < len(pattern['delays']) else delay_ms
-            }
-            
-            # Schedule stimulation on device
-            device.schedule_stimulation(params)
-            
-            # Log stimulation event
-            stimulation_event = {
-                'device_id': device.id,
-                'parameters': params,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            # Update session data if active
-            if self.current_session is not None:
-                self.session_manager.add_event(
-                    self.current_session,
-                    'stimulation_events',
-                    stimulation_event
-                )
-    
-    def _stimulation_actions(self):
-        """Perform actions during stimulation state."""
-        # Monitor neural responses during stimulation
-        eeg_devices = self.device_manager.get_devices_by_type('eeg')
-        if not eeg_devices:
-            return
-        
-        # Get latest EEG data
-        eeg_data = eeg_devices[0].get_data()
-        if eeg_data is None or eeg_data.size == 0:
-            return
-        
-        # Analyze neural response to stimulation
-        response = self.response_analyzer.analyze(eeg_data)
-        
-        # Update adaptive feedback controller with response data
-        self.feedback_controller.update(response)
-        
-        # Get adaptive parameter adjustments
-        adjustments = self.feedback_controller.get_adjustments()
-        
-        # Apply adjustments to ongoing or future stimulation
-        if adjustments is not None:
-            stimulation_devices = self.device_manager.get_devices_by_type('stimulator')
-            for device in stimulation_devices:
-                if device.is_stimulating():
-                    device.adjust_parameters(adjustments)
-        
-        # Record neural response
-        if self.current_session is not None and response is not None:
-            response_event = {
-                'response': response,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            self.session_manager.add_event(
-                self.current_session,
-                'neural_responses',
-                response_event
-            )
-    
-    def _analysis_actions(self):
-        """Perform actions during analysis state."""
-        # Analyze accumulated data to update models and algorithms
-        if self.current_session is not None:
-            # Get session data
-            session_data = self.session_manager.get_session(self.current_session)
-            
-            # Update plasticity model with observed outcomes
-            if 'neural_responses' in session_data and 'stimulation_events' in session_data:
-                # Pair stimulation events with corresponding neural responses
-                paired_data = self._pair_stimulation_responses(
-                    session_data['stimulation_events'],
-                    session_data['neural_responses']
-                )
-                
-                for pair in paired_data:
-                    # Extract plasticity-relevant features
-                    features = self._extract_plasticity_features(pair)
-                    
-                    # Calculate outcome score based on neural response
-                    outcome_score = self._calculate_outcome_score(pair['response'])
-                    
-                    # Add data point to plasticity detector's history
-                    self.plasticity_detector.add_to_history(features, outcome_score)
-                
-                # Retrain plasticity model
-                self.plasticity_detector.train_model()
-    
-    def _pair_stimulation_responses(self, stimulation_events, neural_responses):
-        """
-        Pair stimulation events with corresponding neural responses.
-        
-        Args:
-            stimulation_events (list): List of stimulation event dictionaries
-            neural_responses (list): List of neural response dictionaries
+            treatment_config: Treatment configuration
             
         Returns:
-            list: List of paired data dictionaries
+            True if treatment started successfully, False if failed
         """
-        paired_data = []
-        
-        for stim_event in stimulation_events:
-            stim_time = datetime.fromisoformat(stim_event['timestamp'])
-            
-            # Find the closest neural response after the stimulation
-            closest_response = None
-            min_time_diff = float('inf')
-            
-            for response_event in neural_responses:
-                response_time = datetime.fromisoformat(response_event['timestamp'])
-                time_diff = (response_time - stim_time).total_seconds()
+        with self.lock:
+            if not self.system_state["is_running"]:
+                logger.error("Cannot start treatment: System not running")
+                return False
                 
-                # Only consider responses after stimulation within a reasonable time window (1 second)
-                if 0 < time_diff < 1.0 and time_diff < min_time_diff:
-                    min_time_diff = time_diff
-                    closest_response = response_event
+            if not self.system_state["session_active"]:
+                logger.error("Cannot start treatment: No active session")
+                return False
+                
+            if self.system_state["treatment_active"]:
+                logger.warning("Treatment already active")
+                return False
+                
+            # Update system state
+            self.system_state["treatment_active"] = True
             
-            # If a matching response was found, add to paired data
-            if closest_response is not None:
-                paired_data.append({
-                    'stimulation': stim_event,
-                    'response': closest_response,
-                    'time_diff': min_time_diff
-                })
-        
-        return paired_data
-    
-    def _extract_plasticity_features(self, stim_response_pair):
+            # Trigger event
+            self.trigger_event("treatment_start", {
+                "start_time": time.time(),
+                "config": treatment_config,
+                "protocol_id": treatment_config.get("protocol_id", "unknown")
+            })
+            
+            logger.info("Started treatment")
+            return True
+            
+    def stop_treatment(self) -> bool:
         """
-        Extract features relevant for plasticity prediction from a stimulation-response pair.
+        Stop the current treatment.
+        
+        Returns:
+            True if treatment stopped successfully, False if not active
+        """
+        with self.lock:
+            if not self.system_state["treatment_active"]:
+                logger.warning("No active treatment")
+                return False
+                
+            # Update system state
+            self.system_state["treatment_active"] = False
+            
+            # Trigger event
+            self.trigger_event("treatment_stop", {
+                "end_time": time.time()
+            })
+            
+            logger.info("Stopped treatment")
+            return True
+            
+    def get_system_state(self) -> dict:
+        """
+        Get current system state.
+        
+        Returns:
+            Dictionary with system state information
+        """
+        with self.lock:
+            # Deep copy to avoid modification from outside
+            return dict(self.system_state)
+            
+    def handle_error(self, error_message: str, component_id: str = None) -> None:
+        """
+        Handle system error.
         
         Args:
-            stim_response_pair (dict): Dictionary containing stimulation and response data
-            
-        Returns:
-            dict: Dictionary of extracted features
+            error_message: Error message
+            component_id: ID of the component that encountered the error
         """
-        # Extract timestamp
-        timestamp = datetime.fromisoformat(stim_response_pair['stimulation']['timestamp'])
+        # Trigger error event
+        self.trigger_event("error", {
+            "error": error_message,
+            "component_id": component_id,
+            "timestamp": time.time()
+        })
         
-        # Get current EEG features
-        eeg_devices = self.device_manager.get_devices_by_type('eeg')
-        eeg_features = {}
+        # Update system state
+        self.system_state["error_state"] = True
         
-        if eeg_devices:
-            eeg_data = eeg_devices[0].get_data()
-            if eeg_data is not None and eeg_data.size > 0:
-                # Extract EEG features
-                eeg_features = self.plasticity_detector.extract_eeg_features(eeg_data)
-        
-        # Get HRV features from the latest biosignal data
-        biosignal_devices = self.device_manager.get_devices_by_type('biosignal')
-        hrv_features = {'hrv_hf': None}
-        
-        for device in biosignal_devices:
-            if device.signal_type == 'ecg':
-                biosignal_data = device.get_data()
-                if biosignal_data is not None and len(biosignal_data) > 0:
-                    # Process ECG data to get RR intervals
-                    processed_data = self.biosignal_processor.process(
-                        biosignal_data, 
-                        signal_type='ecg'
-                    )
-                    
-                    if 'rr_intervals' in processed_data:
-                        # Extract HRV features
-                        hrv_features = self.plasticity_detector.extract_hrv_features(
-                            processed_data['rr_intervals']
-                        )
-        
-        # Get circadian phase and time since sleep
-        circadian_features = self.plasticity_detector.calculate_circadian_phase(timestamp)
-        
-        # Combine all features
-        features = {
-            'timestamp': timestamp,
-            'alpha_theta_ratio': eeg_features.get('alpha_theta_ratio', None),
-            'beta_gamma_ratio': eeg_features.get('beta_gamma_ratio', None),
-            'hrv_hf': hrv_features.get('hrv_hf', None),
-            'circadian_phase': circadian_features.get('circadian_phase', None),
-            'time_since_sleep': circadian_features.get('time_since_sleep', None)
-        }
-        
-        return features
-    
-    def _calculate_outcome_score(self, response_event):
+        logger.error(f"System error: {error_message}" + 
+                  (f" (component: {component_id})" if component_id else ""))
+                  
+    def reset_error_state(self) -> bool:
         """
-        Calculate an outcome score based on neural response.
-        
-        Args:
-            response_event (dict): Neural response event data
-            
-        Returns:
-            float: Outcome score (0-1)
-        """
-        response = response_event['response']
-        
-        # Calculate score based on neural response metrics
-        if 'amplitude' in response and 'latency' in response:
-            # Normalize amplitude (higher is better)
-            norm_amplitude = min(response['amplitude'] / 10.0, 1.0)
-            
-            # Normalize latency (lower is better)
-            norm_latency = max(1.0 - response['latency'] / 0.5, 0.0)
-            
-            # Weighted combination
-            score = 0.7 * norm_amplitude + 0.3 * norm_latency
-            
-            return score
-        
-        return 0.5  # Default score if metrics are missing
-    
-    def _error_actions(self):
-        """Perform actions during error state."""
-        self.logger.error(f"System in ERROR state: {self.last_error}")
-        
-        # Attempt to recover from error
-        if self.device_manager.check_errors():
-            # Try to reconnect problematic devices
-            self.device_manager.reconnect_devices()
-        
-        # Check if error is resolved
-        if not self.device_manager.check_errors():
-            self.logger.info("System recovered from error state")
-            self.state = SystemState.MONITORING
-        else:
-            # If error persists, sleep to prevent rapid retry loops
-            time.sleep(5.0)
-    
-    def get_system_status(self):
-        """
-        Get current system status.
+        Reset system error state.
         
         Returns:
-            dict: System status information
+            True if error state reset successfully, False if no error
         """
-        # Get device status
-        device_status = self.device_manager.get_all_device_status()
-        
-        # Get session status
-        if self.current_session is not None:
-            session_status = {
-                'session_id': self.current_session,
-                'duration': self.session_manager.get_session_duration(self.current_session),
-                'events': self.session_manager.get_session_event_counts(self.current_session)
-            }
-        else:
-            session_status = None
-        
-        # Compile system status
-        status = {
-            'state': self.state.name,
-            'is_running': self.is_running,
-            'last_error': self.last_error,
-            'devices': device_status,
-            'session': session_status,
-            'timestamp': datetime.now().isoformat()
-        }
-        
-        return status
-    
-    def get_stimulation_predictions(self, hours_ahead=24):
-        """
-        Get predictions of upcoming optimal stimulation windows.
-        
-        Args:
-            hours_ahead (int): Number of hours to predict ahead
+        with self.lock:
+            if not self.system_state["error_state"]:
+                return False
+                
+            self.system_state["error_state"] = False
             
-        Returns:
-            list: List of predicted stimulation windows
-        """
-        # Get plasticity window predictions
-        plasticity_windows = self.plasticity_detector.predict_upcoming_windows(
-            hours_ahead=hours_ahead,
-            interval_minutes=30
-        )
-        
-        # Convert to stimulation windows with additional information
-        stimulation_windows = []
-        
-        for window in plasticity_windows:
-            if window['is_high_plasticity']:
-                stimulation_windows.append({
-                    'start_time': window['timestamp'].isoformat(),
-                    'duration_minutes': 30,
-                    'plasticity_score': window['plasticity_score'],
-                    'confidence': window['confidence'],
-                    'recommended_parameters': self._get_recommended_parameters(window['plasticity_score'])
-                })
-        
-        return stimulation_windows
-    
-    def _get_recommended_parameters(self, plasticity_score):
-        """
-        Get recommended stimulation parameters based on plasticity score.
-        
-        Args:
-            plasticity_score (float): Plasticity score (0-1)
+            # Trigger event
+            self.trigger_event("error_reset", {
+                "timestamp": time.time()
+            })
             
-        Returns:
-            dict: Recommended stimulation parameters
-        """
-        # Scale parameters based on plasticity score
-        recommended = {
-            'amplitude': min(2.0 + 3.0 * plasticity_score, 5.0),  # 2-5 mA
-            'frequency': 10 + 20 * plasticity_score,  # 10-30 Hz
-            'duration': 60 + 60 * plasticity_score,  # 60-120 seconds
-            'electrodes': ['F3', 'F4', 'C3', 'C4', 'P3', 'P4']  # Default electrode set
-        }
-        
-        return recommended
+            logger.info("Error state reset")
+            return True
